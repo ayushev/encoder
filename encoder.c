@@ -56,8 +56,7 @@ int main(int argc, char* argv[])
                 curThread = 0;
                 dirOff += dirSize;
                 encFSM = en_efsm_makeThread;
-            }
-            else
+            } else
                 encFSM = en_efsm_end;
             break;
         case en_efsm_makeThread:
@@ -70,7 +69,7 @@ int main(int argc, char* argv[])
                 encFSM = en_efsm_end;
                 break;
             }
-            if ((curThread == (MAX_THREADS - 1)) || (curArgs == dirSize)) {
+            if ((curThread == (MAX_THREADS - 1)) || (curArgs == (dirSize-1))) {
                 encFSM = en_efsm_waitThread;
             } else {
                 curThread++;

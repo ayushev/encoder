@@ -230,24 +230,24 @@ void* music_process(void *threadarg)
     E4C_TRY{
         p_lame = lame_init();
         if (!p_lame) {
-            E4C_THROW(RuntimeException,"LAME initialization failed. Exit.\n");
+            E4C_THROW(RuntimeException,"LAME initialization failed. Exit.");
         }
 
         /* Prepare full file path from filename and common directory */
         if ((encArgs->p_filename == NULL) || (encArgs->p_dirPath == NULL)) {
-            E4C_THROW(ProgramSignalException, "Filename empty. Exit.\n");
+            E4C_THROW(ProgramSignalException, "Filename empty. Exit.");
         }
         strncat(p_absPath,encArgs->p_dirPath,MAX_FILEPATH);
         strncat(p_absPath,encArgs->p_filename,MAX_FILEPATH - strlen(encArgs->p_dirPath));
 
         /* Initialize encoder structure with all relevant values */
         if (__encPrepare(MUSIC_IN, &inFile, p_absPath) < 0) {
-            E4C_THROW(ProgramSignalException, "Encoder struct initialization failed. Exit.\n");
+            E4C_THROW(ProgramSignalException, "Encoder struct initialization failed. Exit.");
         }
         memset(inFileBuf, 0, INBUF_SIZE);
 
         if (__musicPrepare(p_lame, &inFile) < 0) {
-            E4C_THROW(ProgramSignalException, "Failed to parse a header for input. Exit.\n");
+            E4C_THROW(ProgramSignalException, "Failed to parse a header for input. Exit.");
         }
 
         lame_set_VBR(p_lame, vbr_default);
@@ -259,7 +259,7 @@ void* music_process(void *threadarg)
         }
 
         if (__encPrepare(MUSIC_OUT, &outFile, p_absPath) < 0) {
-            E4C_THROW(RuntimeException, "Encoder struct initialization failed. Exit.\n");
+            E4C_THROW(RuntimeException, "Encoder struct initialization failed. Exit.");
         }
         memset(outFileBuf, 0, OUTBUF_SIZE);
 
@@ -292,7 +292,7 @@ void* music_process(void *threadarg)
                                         outFileBuf, OUTBUF_SIZE);
                     }
                     if (outFile.blkLen < 0) {
-                        E4C_THROW(RuntimeException, "Failed to encode file. Exit.\n");
+                        E4C_THROW(RuntimeException, "Failed to encode file. Exit.");
                     }
 
                     fwrite_unlocked(outFileBuf, outFile.blkLen, 1, outFile.p_fp);

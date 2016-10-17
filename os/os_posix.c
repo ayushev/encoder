@@ -175,7 +175,7 @@ int16_t os_fExplore(char* dirPath, uint16_t dirOff,
         dirSize = -1;
     } else {
         /* While we have files or correctly reallocated memory keep reading*/
-        while ((dirFile = readdir(dirDesc)) && (dirSize <= maxElems) )
+        while ((dirFile = readdir(dirDesc)) && (dirSize < maxElems) )
         {
             /* Skip all directories, unsupported files and already processed files */
             if (!strcmp (dirFile->d_name, "."))

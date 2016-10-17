@@ -12,7 +12,7 @@
 #define INBUF_SIZE      BLOCK_SIZE>>1
 #define OUTBUF_SIZE     BLOCK_SIZE
 #define MAX_FILEPATH    256
-#define MAX_THREADS     25
+#define MAX_THREADS     150
 
 typedef enum en_music
 {
