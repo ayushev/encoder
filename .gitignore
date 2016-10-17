@@ -5,7 +5,6 @@ bin/
 .project
 .cproject
 _*/
-test/*
 *.svn-base
 *.o
 *.elf
