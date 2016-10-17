@@ -46,6 +46,7 @@ typedef enum en_musicFSM {
 static int8_t __wavePrepare(lame_t p_lame, st_encoder_t* p_enc);
 static int8_t __musicPrepare(lame_t p_lame, st_encoder_t* p_enc);
 static int8_t __encPrepare(uint8_t inout, st_encoder_t * enc, const char* path);
+inline static int* __swapBytes(int32_t *	p_in, uint8_t bps, uint8_t ns);
 
 static int8_t __encPrepare(uint8_t inout, st_encoder_t* p_enc, const char* path)
 {
@@ -131,9 +132,9 @@ static int8_t __wavePrepare(lame_t p_lame, st_encoder_t* p_enc)
                         /* cbSize */
                         os_read16le(p_fp);            subChunkSize -= 2;
                         /* ValidBitsPerSample */
-                        os_read16le(p_fp);            subChunkSize -= 2;
+                        bitsPerSample = os_read16le(p_fp); subChunkSize -= 2;
                         /* dwChannelMask */
-                        os_read32le(p_fp);            subChunkSize -= 4;
+                        i32 = os_read32le(p_fp);      subChunkSize -= 4;
                         /* SubFormat */
                         audioFmt = os_read16le(p_fp); subChunkSize -= 2;
                     }
@@ -173,6 +174,7 @@ static int8_t __wavePrepare(lame_t p_lame, st_encoder_t* p_enc)
             /* Number of samples =  DataLength/(NumChannels * BytesPerSample) */
             i32 = dataLength/i32;
             lame_set_num_samples(p_lame, i32);
+            p_enc->bps = bitsPerSample;
         }
     }
     E4C_CATCH(RuntimeException){
@@ -208,6 +210,40 @@ static int8_t __musicPrepare(lame_t p_lame, st_encoder_t* p_enc)
     return (err);
 }
 
+inline static int * __swapBytes(int32_t*	p_in, uint8_t bps, uint8_t ns)
+{
+	assert(p_in != NULL);
+
+	/* Output pointer */
+	int*			p_op = NULL ;
+	/* Input pointer */
+	unsigned char*  p_ip = (unsigned char *) p_in;
+	const int b = sizeof(int32_t)<<3;
+
+	p_op = p_in + ns;
+
+	switch (bps) {
+	case 1:
+	  for( int i = ns; (i -= bps) >=0;)
+		  * --p_op = p_ip[i] << (b - 8);
+	  break;
+	case 2:
+	  for( int i = ns; (i -= bps) >=0;)
+		  * --p_op = p_ip[i] << (b - 8) | p_ip[i + 1] << (b - 16);
+	  break;
+	case 3:
+	  for( int i = ns; (i -= bps) >=0;)
+		  * --p_op = p_ip[i] << (b - 8) | p_ip[i + 1] << (b - 16) | p_ip[i + 2] << (b - 24);
+	  break;
+	case 4:
+	  for( int i = ns; (i -= bps) >=0;)
+		  * --p_op = p_ip[i] << (b - 8) | p_ip[i + 1] << (b - 16) | p_ip[i + 2] << (b - 24) | p_ip[i + 3] << (b -  32);
+	  break;
+	}
+
+	return p_op;
+}
+
 void* music_process(void *threadarg)
 {
     assert(threadarg != NULL);
@@ -215,11 +251,11 @@ void* music_process(void *threadarg)
     lame_t              p_lame = NULL;
     st_encoder_t        inFile;
     /* LAME requires buffer of short as input */
-    short int           inFileBuf[INBUF_SIZE];
+    int32_t    			inFileBuf[INBUF_SIZE];
     st_encoder_t        outFile;
     /* LAME requires buffer of unsigned char as output */
-    unsigned char       outFileBuf[OUTBUF_SIZE];
-    en_musicFSM_t         encFSM = en_mfsm_akkudata;
+    uint8_t             outFileBuf[OUTBUF_SIZE];
+    en_musicFSM_t       encFSM = en_mfsm_akkudata;
     int                 numSamples = 0;
     st_encArgs_t*       encArgs = (st_encArgs_t*) threadarg;
     char                p_absPath[MAX_FILEPATH] = {'\0'};
@@ -263,13 +299,13 @@ void* music_process(void *threadarg)
         }
         memset(outFileBuf, 0, OUTBUF_SIZE);
 
-        int numCh = lame_get_num_channels(p_lame);
-
+        uint8_t numCh = lame_get_num_channels(p_lame);
+        uint8_t bytesPerSample = (inFile.bps + 7) >> 3;
         do {
             switch (encFSM)
             {
                 case en_mfsm_akkudata:
-                    inFile.blkLen = fread_unlocked(inFileBuf, 1, INBUF_SIZE, inFile.p_fp);
+                    inFile.blkLen = fread_unlocked(inFileBuf, bytesPerSample, 256, inFile.p_fp);
 
                     if (inFile.blkLen == 0) {
                         encFSM = en_mfsm_flush;
@@ -280,22 +316,23 @@ void* music_process(void *threadarg)
 
                 case en_mfsm_encode:
                 {
-                    numSamples = (inFile.blkLen) / (sizeof(short) * numCh);
-
+                	int* output = __swapBytes(inFileBuf, bytesPerSample, inFile.blkLen);
+                    numSamples = inFile.blkLen/numCh;
                     if (numCh == 2) {
-                        outFile.blkLen = lame_encode_buffer_interleaved( p_lame,
-                                        inFileBuf, numSamples,
-                                        outFileBuf, OUTBUF_SIZE);
+                    	outFile.blkLen = lame_encode_buffer_int(p_lame, output,
+                    										output + 1,
+															numSamples,
+                    										outFileBuf, OUTBUF_SIZE);
                     } else {
-                        outFile.blkLen = lame_encode_buffer(p_lame, inFileBuf,
-                                        inFileBuf, numSamples,
-                                        outFileBuf, OUTBUF_SIZE);
+                    	outFile.blkLen = lame_encode_buffer_int(p_lame, output,
+                    										output, numSamples,
+															outFileBuf, OUTBUF_SIZE);
                     }
                     if (outFile.blkLen < 0) {
                         E4C_THROW(RuntimeException, "Failed to encode file. Exit.");
                     }
 
-                    fwrite_unlocked(outFileBuf, outFile.blkLen, 1, outFile.p_fp);
+                    fwrite_unlocked(outFileBuf, 1, outFile.blkLen, outFile.p_fp);
                     //fflush_unlocked(outFile.p_fp);
 
                     encFSM = en_mfsm_akkudata;

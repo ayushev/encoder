@@ -30,7 +30,7 @@ int main(int argc, char* argv[])
     int16_t         dirOff = 0;
     char*           dirPath = NULL;
     pthread_t       threads[MAX_THREADS] = {0};
-    st_encArgs_t    p_tArgs[MAX_THREADS] = {NULL};
+    st_encArgs_t    tArgs[MAX_THREADS] = {{NULL}};
     pthread_attr_t  attr;
     en_encoderFSM_t encFSM = en_efsm_prepData;
     int             ret;
@@ -50,7 +50,7 @@ int main(int argc, char* argv[])
     while (encFSM != en_efsm_end) {
         switch (encFSM) {
         case en_efsm_prepData:
-            dirSize = os_fExplore(dirPath, dirOff, p_tArgs, MAX_THREADS);
+            dirSize = os_fExplore(dirPath, dirOff, tArgs, MAX_THREADS);
             if (dirSize) {
                 curArgs = 0;
                 curThread = 0;
@@ -60,10 +60,10 @@ int main(int argc, char* argv[])
                 encFSM = en_efsm_end;
             break;
         case en_efsm_makeThread:
-            printf("Converting-> [%s]\n", p_tArgs[curArgs].p_filename);
-            p_tArgs[curArgs].p_dirPath = argv[1];
+            printf("Converting-> [%s]\n", tArgs[curArgs].p_filename);
+            tArgs[curArgs].p_dirPath = argv[1];
             ret = pthread_create(&threads[curThread], &attr, music_process,
-                                 (void *)&p_tArgs[curArgs]);
+                                 (void *)&tArgs[curArgs]);
             if (ret){
                 fprintf(stderr," Error in pthread_create(), Code [%d]\n", ret);
                 encFSM = en_efsm_end;
@@ -98,8 +98,8 @@ int main(int argc, char* argv[])
 
     /* Free allocated memory */
     for (i = 0; i < dirSize; i++) {
-        if ((p_tArgs[i].p_filename) != NULL) {
-            free(p_tArgs[i].p_filename);
+        if ((tArgs[i].p_filename) != NULL) {
+            free(tArgs[i].p_filename);
         }
     }
 

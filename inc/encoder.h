@@ -9,7 +9,7 @@
 #define ENCODER_H_
 
 #define BLOCK_SIZE      1024
-#define INBUF_SIZE      BLOCK_SIZE>>1
+#define INBUF_SIZE      BLOCK_SIZE
 #define OUTBUF_SIZE     BLOCK_SIZE
 #define MAX_FILEPATH    256
 #define MAX_THREADS     150
@@ -33,6 +33,7 @@ typedef struct st_encoder
 	en_music_t      type;
 	uint32_t        len;
 	const char*     path;
+	uint8_t			bps;
 
 	int             blkLen;
 } st_encoder_t;
