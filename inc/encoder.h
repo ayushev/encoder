@@ -8,11 +8,11 @@
 #ifndef ENCODER_H_
 #define ENCODER_H_
 
-#define BLOCK_SIZE      1024
+#define BLOCK_SIZE      2048
 #define INBUF_SIZE      BLOCK_SIZE
 #define OUTBUF_SIZE     BLOCK_SIZE
 #define MAX_FILEPATH    256
-#define MAX_THREADS     150
+#define MAX_THREADS     50
 
 typedef enum en_music
 {
