@@ -171,7 +171,7 @@ int16_t os_fExplore(char* dirPath, uint16_t dirOff,
 
     /* Scanning the in directory */
     if ((dirDesc = opendir (dirPath)) == NULL) {
-        fprintf(stderr, "Error : Failed to open input directory - %s\n", strerror(errno));
+        fprintf(stderr, "Error : Failed to open input directory.\n");
         dirSize = -1;
     } else {
         /* While we have files or correctly reallocated memory keep reading*/

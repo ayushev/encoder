@@ -51,7 +51,7 @@ int main(int argc, char* argv[])
         switch (encFSM) {
         case en_efsm_prepData:
             dirSize = os_fExplore(dirPath, dirOff, tArgs, MAX_THREADS);
-            if (dirSize) {
+            if (dirSize > 0) {
                 curArgs = 0;
                 curThread = 0;
                 dirOff += dirSize;
