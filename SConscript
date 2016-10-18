@@ -39,7 +39,7 @@ def add_includes(incs):
         genv.MergeFlags({'CPPPATH' : includes})
 
 ################################################################################
-############################## MAIN APPLICATION ################################
+# MAIN APPLICATION #
 ################################################################################
 trg = 'encoder'
 conf = {
@@ -65,19 +65,15 @@ conf = {
 }
 genv.MergeFlags(conf)
 
-incs = [ prj_path + 'inc/*'
-]
-
-if sys.platform == 'linux':
+if sys.platform == 'linux' or sys.platform == 'linux2':
     os_src = 'os/os_posix.c'
 	
 if sys.platform == 'win32':
 	os_src = 'os/os_win.c'
 
-srcs =  [ prj_path + '*.c',
-          os_src
-]
+srcs =  [ prj_path + '*.c', os_src ]
+
 add_sources(srcs)
-add_includes(incs)
+add_includes([prj_path + 'inc/*'])
 
 genv.Program(target = trg, source = sources)
