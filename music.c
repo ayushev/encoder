@@ -42,6 +42,8 @@ typedef enum en_musicFSM
     en_mfsm_exit
 } en_musicFSM_t;
 
+static pthread_mutex_t music_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 static int8_t __wavePrepare(lame_t p_lame, st_encoder_t* p_enc);
 static int8_t __musicPrepare(lame_t p_lame, st_encoder_t* p_enc);
 static int8_t __encPrepare(uint8_t inout, st_encoder_t * enc, const char* path);
@@ -59,7 +61,7 @@ static int8_t __encPrepare(uint8_t inout, st_encoder_t* p_enc, const char* path)
     {
         p_enc->fmt = en_music_invalid;
         p_enc->isFloat = en_music_invalid;
-        p_enc->len = 0;
+        p_enc->fsize = 0;
         p_enc->path = path;
         p_enc->p_fp = NULL;
         p_enc->opened = 0;
@@ -83,20 +85,20 @@ static int8_t __wavePrepare(lame_t p_lame, st_encoder_t* p_enc)
     assert(p_enc->p_fp != NULL);
     assert(p_lame != NULL);
 
-    int8_t err = 0;
-    int32_t i32 = 0;
+    int8_t      err = 0;
+    int32_t         i32 = 0;
     /* Mono by default */
-    int16_t numChannels = 1;
+    int16_t         numChannels = 1;
     /* 44100 by default */
-    int32_t sampleRate = 44100;
+    int32_t         sampleRate = 44100;
     /* 8 by default */
-    int32_t bitsPerSample = 8;
-    int16_t audioFmt = 0;
-    int32_t chunkID = 0;
-    int32_t chunkSize = 0;
-    int32_t subChunkSize = 0;
-    uint32_t dataLength = 0;
-    FILE* p_fp = p_enc->p_fp;
+    int32_t         bitsPerSample = 8;
+    int16_t         audioFmt = 0;
+    int32_t         chunkID = 0;
+    int32_t         chunkSize = 0;
+    int32_t         subChunkSize = 0;
+    uint32_t        dataLength = 0;
+    FILE*           p_fp = p_enc->p_fp;
 
     E4C_TRY{
     /* ChunkSize */
@@ -151,7 +153,7 @@ static int8_t __wavePrepare(lame_t p_lame, st_encoder_t* p_enc)
                 E4C_THROW(RuntimeException, "Non PCM file format is't supported");
             }
 
-            if (os_fSkip(p_fp, (long) subChunkSize) < 0)
+            if (os_fOffset(p_fp, (long) subChunkSize) < 0)
             {
                 E4C_THROW(RuntimeException, "Failed to skip data");
             }
@@ -160,7 +162,7 @@ static int8_t __wavePrepare(lame_t p_lame, st_encoder_t* p_enc)
             dataLength = subChunkSize;
             break;
             default:
-            if (os_fSkip(p_fp, (long) subChunkSize) < 0)
+            if (os_fOffset(p_fp, (long) subChunkSize) < 0)
             {
                 E4C_THROW(RuntimeException, "Failed to skip data");
             }
@@ -218,7 +220,7 @@ static int8_t __musicPrepare(lame_t p_lame, st_encoder_t* p_enc)
     }
     else
     {
-        os_fSeek(p_enc->p_fp, -4);
+        os_fOffset(p_enc->p_fp, -4);
         fprintf(stderr, "File [%*.*s]: %s", 1, 80, p_enc->path,
                 "Format not supported");
         err = -1;
@@ -253,39 +255,40 @@ static void __flopBytes(uint8_t* p_in, uint16_t inSize, int32_t* p_outL,
     }
 }
 
-void* music_process(void *threadarg)
+int8_t music_procFile(char* p_dirPath, char* p_fname)
 {
-    assert(threadarg != NULL);
+    /* Absolute path to the file because it's too expensive to
+     * store absolute path for each file */
+    char p_path[MAX_FILEPATH] = { '\0' };
 
-    lame_t p_lame = NULL;
+    lame_t          p_lame = NULL;
     /* Structure to hold info about input file */
-    st_encoder_t inFile;
+    st_encoder_t    inFile;
     /* We create a separate buffer for each channel */
-    int32_t p_channels[2][INBUF_SIZE];
+    int32_t         p_channels[2][INBUF_SIZE];
     /* Number of channels, will be detected further */
-    uint8_t numChannels = 1;
+    uint8_t         numChannels = 1;
     /* We read inFile into this buffer bytewise */
-    uint8_t p_inBuf[INBUF_SIZE];
+    uint8_t         p_inBuf[INBUF_SIZE];
     /* Bytes per sample, will be detected further */
-    uint8_t bytesPS = 0;
+    uint8_t         bytesPS = 0;
 
     /* Structure to hold info about output file */
-    st_encoder_t outFile = { 0 };
+    st_encoder_t    outFile =
+    { 0 };
     /* LAME requires buffer of unsigned char as output */
-    uint8_t p_outBuf[OUTBUF_SIZE];
+    uint8_t         p_outBuf[OUTBUF_SIZE];
 
     /* We read data from a given file framewise,
      * so we need to store its size  */
-    uint32_t frameLen = 0;
+    uint32_t        frameLen = 0;
 
     /* Finite State Machine to store state of data processing
      * entry -> en_mfsm_akkudata <->  en_mfsm_encode
-     * 			                  ->  en_mfsm_flush  -> en_mfsm_exit -> exit*/
-    en_musicFSM_t encFSM = en_mfsm_akkudata;
-    int numSamples = 0;
-    st_encArgs_t* encArgs = (st_encArgs_t*) threadarg;
-    char p_absPath[MAX_FILEPATH] =
-    { '\0' };
+     *                            ->  en_mfsm_flush  -> en_mfsm_exit -> exit*/
+    en_musicFSM_t   encFSM = en_mfsm_akkudata;
+    int32_t         numSamples = 0;
+    int8_t          ret = 0;
 
     /* Begin the exception context for a single thread */
     e4c_context_begin(E4C_TRUE);
@@ -298,15 +301,15 @@ void* music_process(void *threadarg)
         }
 
         /* Prepare full file path from filename and common directory */
-        if ((encArgs->p_filename == NULL) || (encArgs->p_dirPath == NULL))
+        if ((p_fname == NULL) || (p_dirPath == NULL))
         {
             E4C_THROW(ProgramSignalException, "Filename empty. Exit.");
         }
-        strncat(p_absPath,encArgs->p_dirPath,MAX_FILEPATH);
-        strncat(p_absPath,encArgs->p_filename,MAX_FILEPATH - strlen(encArgs->p_dirPath));
+
+        os_mkPath(p_path, p_dirPath, p_fname, MAX_FILEPATH);
 
         /* Initialize encoder structure with all relevant values */
-        if (__encPrepare(MUSIC_IN, &inFile, p_absPath) < 0)
+        if (__encPrepare(MUSIC_IN, &inFile, p_path) < 0)
         {
             E4C_THROW(ProgramSignalException, "Encoder struct initialization failed. Exit.");
         }
@@ -328,7 +331,7 @@ void* music_process(void *threadarg)
             E4C_THROW(RuntimeException, "Failed to init LAME parameters. Exit.\n");
         }
 
-        if (__encPrepare(MUSIC_OUT, &outFile, p_absPath) < 0)
+        if (__encPrepare(MUSIC_OUT, &outFile, p_path) < 0)
         {
             E4C_THROW(RuntimeException, "Encoder struct initialization failed. Exit.");
         }
@@ -353,7 +356,7 @@ void* music_process(void *threadarg)
                  * 4) __swapBytes()
                  * 5) p_channels --> L[44:33:22:11]R[88:77:66:55]
                  * */
-                frameLen = fread_unlocked(p_inBuf, bytesPS, INBUF_SIZE/bytesPS, inFile.p_fp);
+                frameLen = os_fread_unlocked(p_inBuf, bytesPS, INBUF_SIZE/bytesPS, inFile.p_fp);
 
                 if (frameLen == 0)
                 {
@@ -368,13 +371,13 @@ void* music_process(void *threadarg)
                 case en_mfsm_encode:
                 {
                     __flopBytes(p_inBuf,bytesPS * frameLen ,
-                            p_channels[0], numChannels==2?p_channels[1]:NULL, INBUF_SIZE,
-                            bytesPS);
+                                p_channels[0], numChannels==2?p_channels[1]:NULL, INBUF_SIZE,
+                                bytesPS);
+
                     numSamples = frameLen/numChannels;
 
                     if (numChannels == 2)
                     {
-
                         frameLen = lame_encode_buffer_int(p_lame, p_channels[0],
                                 p_channels[1],
                                 numSamples,
@@ -391,8 +394,7 @@ void* music_process(void *threadarg)
                         E4C_THROW(RuntimeException, "Failed to encode file. Exit.");
                     }
 
-                    fwrite_unlocked(p_outBuf, 1, frameLen, outFile.p_fp);
-                    //fflush_unlocked(outFile.p_fp);
+                    os_fwrite_unlocked(p_outBuf, 1, frameLen, outFile.p_fp);
 
                     encFSM = en_mfsm_akkudata;
                 }
@@ -400,7 +402,7 @@ void* music_process(void *threadarg)
 
                 case en_mfsm_flush:
                 frameLen = lame_encode_flush(p_lame, p_outBuf, OUTBUF_SIZE);
-                fwrite_unlocked(p_outBuf, frameLen, 1, outFile.p_fp);
+                os_fwrite_unlocked(p_outBuf, frameLen, 1, outFile.p_fp);
                 encFSM = en_mfsm_exit;
                 break;
 
@@ -410,26 +412,62 @@ void* music_process(void *threadarg)
                 break;
             }
         }while (encFSM != en_mfsm_exit);
+        ret = 1;
+
+        printf("[%s] Converting OK \n", p_fname);
     }
     E4C_CATCH (RuntimeException)
     {
         const e4c_exception * e = e4c_get_exception();
-        fprintf(stderr, "%s (%s).", e->name, e->message);
+        fprintf(stderr, "[%s] Converting FAILED. Reason: %s (%s).", e->name, e->message);
+        ret = -1;
     }
     E4C_CATCH (ProgramSignalException)
     {
         const e4c_exception * e = e4c_get_exception();
-        fprintf(stderr, "%s (%s).", e->name, e->message);
+        fprintf(stderr, "[%s] Converting FAILED. Reason: %s (%s).", e->name, e->message);
+        ret = -1;
     }
 
-/* Leave exception context */
+    lame_close(p_lame);
+
+    /* Leave exception context */
     e4c_context_end();
 
-    lame_close(p_lame);
-    if (inFile.opened)
-        fclose(inFile.p_fp);
-    if (outFile.opened)
-        fclose(outFile.p_fp);
+    os_fclose(&inFile);
+    os_fclose(&outFile);
+
+    return (ret);
+}
+
+void* music_procFiles(void *threadarg)
+{
+    assert(threadarg != NULL);
+
+    st_encArgs_t* tArgs = (st_encArgs_t*) threadarg;
+    int32_t tArgsIndex = -1;
+
+    while (1)
+    {
+        tArgsIndex = -1;
+
+        pthread_mutex_lock(&music_mutex);
+        for (int i = 0; i < tArgs->files; i++)
+        {
+            if (tArgs->p_fdesc[i].flocked == 0)
+            {
+                tArgs->p_fdesc[i].flocked = 1;
+                tArgsIndex = i;
+                break;
+            }
+        }
+        pthread_mutex_unlock(&music_mutex);
+
+        if (tArgsIndex >= 0)
+            music_procFile(tArgs->p_dirPath, tArgs->p_fdesc[tArgsIndex].p_fname);
+        else
+            break;
+    }
 
     pthread_exit(NULL);
 }

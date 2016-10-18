@@ -12,7 +12,7 @@
 #define INBUF_SIZE      BLOCK_SIZE
 #define OUTBUF_SIZE     BLOCK_SIZE
 #define MAX_FILEPATH    256
-#define MAX_THREADS     50
+#define MAX_THREADS     2
 
 typedef enum en_music
 {
@@ -20,10 +20,17 @@ typedef enum en_music
     en_music_wave
 } en_music_t;
 
+typedef struct st_encFDesc
+{
+    char*      p_fname;
+    uint8_t    flocked;
+}st_encFDesc_t;
+
 typedef struct st_encArgs
 {
-    char*       p_filename;
-    char*       p_dirPath;
+    st_encFDesc_t*  p_fdesc;
+    int32_t         files;
+    char*           p_dirPath;
 }st_encArgs_t;
 
 typedef struct st_encoder
@@ -33,7 +40,7 @@ typedef struct st_encoder
 	/* Absolute path to the file */
 	const char*     path;
 	/* The overall length of the file */
-	uint32_t        len;
+	uint32_t        fsize;
 	/* Shows whether file is still opened */
     uint8_t         opened;
 

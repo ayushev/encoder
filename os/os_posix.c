@@ -87,8 +87,8 @@ int8_t os_fOpen(uint8_t read, st_encoder_t * p_enc)
                 E4C_THROW(RuntimeException, "Not a regular file.\n");
             }
 
-            p_enc->len = st.st_size;
-            if (p_enc->len == -1) {
+            p_enc->fsize = st.st_size;
+            if (p_enc->fsize == -1) {
                 E4C_THROW(RuntimeException, "Failed to calculate the size of a file.\n");
             }
 
@@ -136,7 +136,7 @@ int8_t os_fOpen(uint8_t read, st_encoder_t * p_enc)
 	return (err);
 }
 
-int8_t os_fSkip(FILE* p_fp, uint32_t off)
+int8_t os_fOffset(FILE* p_fp, int32_t off)
 {
     int8_t err = 0;
     /* Find the end of the file in a safe way */
@@ -147,27 +147,15 @@ int8_t os_fSkip(FILE* p_fp, uint32_t off)
     return (err);
 }
 
-int8_t os_fSeek(FILE* p_fp, int32_t off)
-{
-    int8_t err = 0;
-    /* Move a pointer from current place backwards */
-    if (fseeko(p_fp, off , SEEK_CUR) != 0) {
-        err = -1;
-    }
-
-    return (err);
-}
-
-int16_t os_fExplore(char* dirPath, uint16_t dirOff,
-                    st_encArgs_t* threadArgs, uint16_t maxElems)
+int32_t os_fExplore(char* dirPath, st_encArgs_t* p_tArgs, uint16_t maxElems)
 {
 
-    assert(threadArgs != NULL);
+    assert(p_tArgs != NULL);
     assert(dirPath != NULL);
 
     DIR*            dirDesc = NULL;
     struct dirent*  dirFile = NULL;
-    int16_t         dirSize = 0;
+    int32_t         dirSize = 0;
 
     /* Scanning the in directory */
     if ((dirDesc = opendir (dirPath)) == NULL) {
@@ -175,7 +163,7 @@ int16_t os_fExplore(char* dirPath, uint16_t dirOff,
         dirSize = -1;
     } else {
         /* While we have files or correctly reallocated memory keep reading*/
-        while ((dirFile = readdir(dirDesc)) && (dirSize < maxElems) )
+        while ((dirFile = readdir(dirDesc)))
         {
             /* Skip all directories, unsupported files and already processed files */
             if (!strcmp (dirFile->d_name, "."))
@@ -186,19 +174,56 @@ int16_t os_fExplore(char* dirPath, uint16_t dirOff,
                 continue;
             if (__extIsSupported(dirFile->d_name) <= 0)
                 continue;
-            if (dirOff > 0) {
-                dirOff--;
-                continue;
+
+            /* Allocate memory for file descriptor  */
+            if (dirSize == 0) {
+                p_tArgs->p_fdesc = malloc(sizeof(st_encFDesc_t));
+            } else {
+                p_tArgs->p_fdesc = realloc(p_tArgs->p_fdesc, (dirSize+1)*sizeof(st_encFDesc_t));
             }
+
+            /* Check result of malloc/realloc */
+            if (p_tArgs->p_fdesc == NULL) {
+                fprintf(stderr, "Error : Failed to allocate memory for file descriptor\n");
+                dirSize = -1;
+                break;
+            }
+
             /* We've found a file, duplicate memory*/
-            threadArgs[dirSize].p_filename = strdup(dirFile->d_name);
+            p_tArgs->p_fdesc[dirSize].p_fname = strdup(dirFile->d_name);
+            p_tArgs->p_fdesc[dirSize].flocked = 0;
             /* Move pointer to a next element in array of filenames */
             /* Increment file amount of files */
             dirSize++;
         }
+        if (dirSize == 0) {
+            free(p_tArgs->p_fdesc);
+        }
+        p_tArgs->files = dirSize;
     }
 
     return (dirSize);
+}
+
+inline void os_mkPath(char* p_path, char* p_dirPath, char* p_fname, uint16_t lim)
+{
+    snprintf(p_path,lim,"%s/%s",p_dirPath,p_fname);
+}
+
+inline uint32_t os_fread_unlocked(void* p_buf, size_t size, size_t cnt, FILE* p_fp)
+{
+    return (fread_unlocked(p_buf, size, cnt, p_fp));
+}
+
+inline void os_fwrite_unlocked(void* p_buf, size_t size, size_t cnt, FILE* p_fp)
+{
+    fwrite_unlocked(p_buf, size, cnt, p_fp);
+}
+
+inline void os_fclose(st_encoder_t* p_enc)
+{
+    if (p_enc->opened)
+        fclose( p_enc->p_fp);
 }
 
 int32_t os_read32be(FILE* p_fp)
