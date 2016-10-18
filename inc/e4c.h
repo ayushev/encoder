@@ -137,9 +137,9 @@
  * current set of blocked signals. If a program employs signal handling it
  * should use POSIX's sigsetjmp/siglongjmp.
  */
-#   ifndef HAVE_POSIX_SIGSETJMP
-#       define HAVE_POSIX_SIGSETJMP
-#   endif
+//#   ifndef HAVE_POSIX_SIGSETJMP
+//#       define HAVE_POSIX_SIGSETJMP
+//#   endif
 
 # endif
 

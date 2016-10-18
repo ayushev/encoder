@@ -4,9 +4,6 @@
 #include <stdint.h>
 #include <assert.h>
 #include <pthread.h>
-/* Lame C library header*/
-#include "lame/lame.h"
-
 #include "encoder.h"
 /* Exceptions for C header */
 #include "e4c.h"

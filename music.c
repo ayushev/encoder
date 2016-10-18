@@ -11,7 +11,7 @@
 #include <assert.h>
 #include <string.h>
 #include <pthread.h>
-#include "lame/lame.h"
+#include "lame.h"
 #include "encoder.h"
 #include "os.h"
 #include "e4c.h"
@@ -376,18 +376,13 @@ int8_t music_procFile(char* p_dirPath, char* p_fname)
 
                     numSamples = frameLen/numChannels;
 
-                    if (numChannels == 2)
-                    {
-                        frameLen = lame_encode_buffer_int(p_lame, p_channels[0],
-                                p_channels[1],
-                                numSamples,
-                                p_outBuf, OUTBUF_SIZE);
+                    if (numChannels == 2){
+                        frameLen = lame_encode_buffer_int(p_lame, p_channels[0], p_channels[1], 
+														  numSamples, p_outBuf, OUTBUF_SIZE);
                     }
-                    else
-                    {
-                        frameLen = lame_encode_buffer_int(p_lame, p_channels[0],
-                                NULL, numSamples,
-                                p_outBuf, OUTBUF_SIZE);
+                    else {
+                        frameLen = lame_encode_buffer_int(p_lame, p_channels[0],NULL, 
+														  numSamples, p_outBuf, OUTBUF_SIZE);
                     }
                     if (frameLen < 0)
                     {
@@ -470,4 +465,5 @@ void* music_procFiles(void *threadarg)
     }
 
     pthread_exit(NULL);
+	return NULL;
 }

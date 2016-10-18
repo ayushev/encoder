@@ -1,4 +1,5 @@
 import os
+import sys
 import glob
 
 sources = []
@@ -59,7 +60,7 @@ conf = {
     'LIBS'    : [ 'pthread',
                   'mp3lame'
     ],
-    'LIBPATH' : [ 
+    'LIBPATH' : [ './'
     ]
 }
 genv.MergeFlags(conf)
@@ -67,8 +68,12 @@ genv.MergeFlags(conf)
 incs = [ prj_path + 'inc/*'
 ]
 
-if genv['PLATFORM'] == 'posix':
+if sys.platform == 'linux':
     os_src = 'os/os_posix.c'
+	
+if sys.platform == 'win32':
+	os_src = 'os/os_win.c'
+
 srcs =  [ prj_path + '*.c',
           os_src
 ]
