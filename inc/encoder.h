@@ -28,14 +28,21 @@ typedef struct st_encArgs
 
 typedef struct st_encoder
 {
+	/* File struct pointer to opened file, otherwise NULL */
     FILE*           p_fp;
-    uint8_t         opened;
-	en_music_t      type;
-	uint32_t        len;
+	/* Absolute path to the file */
 	const char*     path;
-	uint8_t			bps;
+	/* The overall length of the file */
+	uint32_t        len;
+	/* Shows whether file is still opened */
+    uint8_t         opened;
 
-	int             blkLen;
+    /* Format of the file */
+	en_music_t      fmt;
+	/* File encoded as float or integer */
+	uint8_t         isFloat;
+	/* Bit per sample */
+	uint8_t			bps;
 } st_encoder_t;
 
 #endif /* ENCODER_H_ */

@@ -248,3 +248,143 @@ int16_t os_read16le(FILE* p_fp)
         return (high << 8) | low;
     }
 }
+
+inline void os_splitFlopUI8(uint8_t* from, int32_t* toFir, int32_t* toSec, uint32_t toMaxOff)
+{
+    int     i = 0;
+    uint8_t off = sizeof(uint8_t);
+
+    while (1)
+    {
+        if (((i + off) < toMaxOff) && (toFir != NULL))
+        {
+            *toFir = (from[i] ^ 0x80) << 24;
+            toFir++;
+            i += off;
+        }
+
+        if (((i + off) < toMaxOff) && (toSec != NULL))
+        {
+            *toSec = (from[i] ^ 0x80) << 24;
+            toSec++;
+            i += off;
+        }
+
+        if ((i + off) == toMaxOff)
+            break;
+    }
+}
+
+inline void os_splitFlopI16(uint8_t* from, int32_t* toFir, int32_t* toSec, uint32_t toMaxOff)
+{
+    int     i = 0;
+    uint8_t off = sizeof(int16_t);
+
+    while (1)
+    {
+        if (((i + off) < toMaxOff) && (toFir != NULL))
+        {
+            *toFir = from[i + 1] << 24 | from[i] << 16;
+            toFir++;
+            i += off;
+        }
+
+        if (((i + off) < toMaxOff) && (toSec != NULL))
+        {
+            *toSec = from[i + 1] << 24 | from[i] << 16;
+            toSec++;
+            i += off;
+        }
+
+        if ((i + off) == toMaxOff)
+            break;
+    }
+}
+
+inline void os_splitFlopI24(uint8_t* from, int32_t* toFir, int32_t* toSec, uint32_t toMaxOff)
+{
+    int     i = 0;
+    uint8_t off = 3;
+
+    while (1)
+    {
+        if (((i + off) < toMaxOff) && (toFir != NULL))
+        {
+            *toFir = from[i + 2] << 24 | from[i + 1] << 16 | from[i] << 8;
+            toFir++;
+            i += off;
+        }
+
+        if (((i + off) < toMaxOff) && (toSec != NULL))
+        {
+            *toSec = from[i + 2] << 24 | from[i + 1] << 16 | from[i] << 8;
+            toSec++;
+            i += off;
+        }
+
+        if ((i + off) == toMaxOff)
+            break;
+    }
+}
+
+inline void os_splitFlopI32(uint8_t* from, int32_t* toFir, int32_t* toSec, uint32_t toMaxOff)
+{
+    int     i = 0;
+    uint8_t off = sizeof(int32_t);
+
+    while (1)
+    {
+        if (((i + off) < toMaxOff) && (toFir != NULL))
+        {
+            *toFir = from[i + 3] << 24 | from[i + 2] << 16 | from[i + 1] << 8 | from[i];
+            toFir++;
+            i += off;
+        }
+
+        if (((i + off) < toMaxOff) && (toSec != NULL))
+        {
+            *toSec = from[i + 3] << 24 | from[i + 2] << 16 | from[i + 1] << 8 | from[i];
+            toSec++;
+            i += off;
+        }
+
+        if ((i + off) == toMaxOff)
+            break;
+    }
+}
+
+inline uint8_t os_flop_ui8i32(uint8_t* from, int32_t* to, uint32_t toOff, uint32_t toMaxOff)
+{
+    uint8_t res = 1;
+    if ((toOff < toMaxOff) && (to != NULL))
+    {
+        *to = (*from ^ 0x80) << 24;
+    } else {
+        res = 0;
+    }
+    return (res);
+}
+
+inline uint8_t os_flop_i16i32(uint8_t* from, int32_t* to, uint32_t toOff, uint32_t toMaxOff)
+{
+    uint8_t res = 1;
+    if ((toOff < toMaxOff) && (to != NULL))
+    {
+        *to = (*from+1) << 24 | *from << 16;
+    } else {
+        res = 0;
+    }
+    return (res);
+}
+
+inline uint8_t os_flop_i32i32(uint8_t* from, int32_t* to, uint32_t toOff, uint32_t toMaxOff)
+{
+    uint8_t res = 1;
+    if ((toOff < toMaxOff) && (to != NULL))
+    {
+        *to = (*from+3) << 24 | (*from+2) << 16 | (*from+1) << 8 | *from;
+    } else {
+        res = 0;
+    }
+    return (res);
+}

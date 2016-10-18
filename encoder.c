@@ -69,12 +69,11 @@ int main(int argc, char* argv[])
                 encFSM = en_efsm_end;
                 break;
             }
-            if ((curThread == (MAX_THREADS - 1)) || (curArgs == (dirSize-1))) {
-                encFSM = en_efsm_waitThread;
-            } else {
-                curThread++;
-            }
+            curThread++;
             curArgs++;
+            if ((curThread == MAX_THREADS) || (curArgs == dirSize)) {
+                encFSM = en_efsm_waitThread;
+            }
             break;
         case en_efsm_waitThread:
             for(i = 0; i < curThread; i++)

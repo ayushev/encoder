@@ -26,4 +26,9 @@ int16_t os_read16be(FILE* p_fp);
 /* Read 2 bytes in little-endian format */
 int16_t os_read16le(FILE* p_fp);
 
+extern void os_splitFlopUI8(uint8_t* from, int32_t* toFir, int32_t* toSec, uint32_t toMaxOff);
+extern void os_splitFlopI16(uint8_t* from, int32_t* toFir, int32_t* toSec, uint32_t toMaxOff);
+extern void os_splitFlopI24(uint8_t* from, int32_t* toFir, int32_t* toSec, uint32_t toMaxOff);
+extern void os_splitFlopI32(uint8_t* from, int32_t* toFir, int32_t* toSec, uint32_t toMaxOff);
+
 #endif /* OS_H_ */
