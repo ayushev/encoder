@@ -306,6 +306,7 @@ int8_t music_procFile(char* p_dirPath, char* p_fname)
             E4C_THROW(ProgramSignalException, "Filename empty. Exit.");
         }
 
+        /* Make a relative path from two inputs */
         os_mkPath(p_path, p_dirPath, p_fname, MAX_FILEPATH);
 
         /* Initialize encoder structure with all relevant values */
@@ -381,7 +382,7 @@ int8_t music_procFile(char* p_dirPath, char* p_fname)
 														  numSamples, p_outBuf, OUTBUF_SIZE);
                     }
                     else {
-                        frameLen = lame_encode_buffer_int(p_lame, p_channels[0],NULL, 
+                        frameLen = lame_encode_buffer_int(p_lame, p_channels[0], NULL,
 														  numSamples, p_outBuf, OUTBUF_SIZE);
                     }
                     if (frameLen < 0)

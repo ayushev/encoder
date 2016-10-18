@@ -4,6 +4,7 @@
  *  Created on: Oct 14, 2016
  *      Author: yushev
  */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -11,7 +12,11 @@
 #include <io.h>
 #include <windows.h>
 #include <tchar.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 #include <assert.h>
+#include <unistd.h>
 
 #include "encoder.h"
 #include "os.h"
@@ -27,7 +32,6 @@ static char * __extSubstitute(char* to, const char* from)
 
     char *lastdot;
 
-    strcpy (to, from);
     lastdot = strrchr (to, '.');
     if (lastdot != NULL)
         snprintf(lastdot, MAX_FILEPATH,".mp3");
@@ -45,8 +49,8 @@ static int8_t __extIsSupported(const char* from)
     lastdot = strrchr (from, '.');
     if (lastdot != NULL) {
         /* ToDo: hardcoded part, but not critical */
-        if ((strcmp(lastdot,".wave") == 0) ||
-            (strcmp(lastdot,".wav") == 0)) {
+        if ((strncmp(lastdot,".wave",6) == 0) ||
+            (strncmp(lastdot,".wav",5) == 0)) {
             ret = 1;
         }
     } else {
@@ -61,6 +65,7 @@ int8_t os_fOpen(uint8_t read, st_encoder_t * p_enc)
     assert(p_enc->path != NULL);
 
     int8_t  err = 0;
+	struct  stat st;
     int     fd = 0;
 
     E4C_TRY {
@@ -77,7 +82,12 @@ int8_t os_fOpen(uint8_t read, st_encoder_t * p_enc)
                                             "with opened file.\n");
             }
 
-			p_enc->fsize = _filelength(fd);
+			/* Ensure that the file is a regular file */
+            if (fstat(fd, &st) != 0) {
+                E4C_THROW(RuntimeException, "Not a regular file.\n");
+            }
+
+            p_enc->fsize = st.st_size;
             if (p_enc->fsize == -1) {
                 E4C_THROW(RuntimeException, "Failed to calculate the size of a file.\n");
             }
@@ -85,23 +95,25 @@ int8_t os_fOpen(uint8_t read, st_encoder_t * p_enc)
         } else {
             char* mp3Filename = NULL;
             if ((mp3Filename = malloc (strlen (p_enc->path) + 1)) == NULL) {
-                E4C_THROW(RuntimeException, "Failed to allocate memmory "
+                E4C_THROW(RuntimeException, "Failed to allocate memory "
                                             "for filename.\n");
             }
+			strncpy (mp3Filename, p_enc->path, strlen(p_enc->path));
             __extSubstitute(mp3Filename, p_enc->path);
 
             /* Open a file to write*/
-			_sopen_s(&fd, p_enc->path, _O_RDONLY, _SH_DENYRW, _S_IREAD);
+			fd = open(mp3Filename, O_RDWR|O_CREAT);
+            free(mp3Filename);
             if (fd == -1) {
                 E4C_THROW(RuntimeException, "Failed to open a file \n");
             }
 			
-			p_enc->p_fp =_fdopen(fd, "wb");
+			p_enc->p_fp = fdopen(fd, "wb");
 			if (p_enc->p_fp == NULL) {
                 E4C_THROW(RuntimeException, "Failed to associate a descriptor"
                                                             "with opened file.\n");
             }
-            free(mp3Filename);
+
             p_enc->opened = 1;
         }
     }
@@ -129,11 +141,11 @@ int8_t os_fOffset(FILE* p_fp, int32_t off)
     return (err);
 }
 
-int32_t os_fExplore(char* dirPath, st_encArgs_t* threadArgs, uint16_t maxElems)
+int32_t os_fExplore(char* p_dirPath, st_encArgs_t* p_tArgs, uint16_t maxElems)
 {
 
-    assert(threadArgs != NULL);
-    assert(dirPath != NULL);
+    assert(p_tArgs != NULL);
+    assert(p_dirPath != NULL);
 
     TCHAR 			p_dir[MAX_PATH];
     int32_t         dirSize = 0;
@@ -141,44 +153,62 @@ int32_t os_fExplore(char* dirPath, st_encArgs_t* threadArgs, uint16_t maxElems)
 	HANDLE 			hFind = INVALID_HANDLE_VALUE;
 
     /* Scanning the in directory */
-	/* While we have files or correctly reallocated memory keep reading*/
-	do
+	strncpy(p_dir, p_dirPath, MAX_PATH);
+	strncat(p_dir, TEXT("\\*"), MAX_PATH);
+
+	// Find the first file in the directory.
+	hFind = FindFirstFile(p_dir, &ffd);
+	if (INVALID_HANDLE_VALUE == hFind)
 	{
-		/* Skip all directories, unsupported files and already processed files */
-		strncpy(p_dir, dirPath, MAX_PATH);
-		strncat(p_dir, TEXT("\\*"), MAX_PATH);
-		
-		// Find the first file in the directory.
-		hFind = FindFirstFile(p_dir, &ffd);
-		if (INVALID_HANDLE_VALUE == hFind) 
-		{
-			fprintf(stderr, "%s\n",TEXT("FindFirstFile"));
+		fprintf(stderr, "%s\n",TEXT("FindFirstFile"));
+		dirSize = -1;
+		return (dirSize);
+	}
+
+	do {
+		if (ffd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+			continue;
+		if (__extIsSupported(ffd.cFileName) <= 0)
+			continue;
+
+		/* Allocate memory for file descriptor  */
+		if (dirSize == 0) {
+			p_tArgs->p_fdesc = malloc(sizeof(st_encFDesc_t));
+		} else {
+			p_tArgs->p_fdesc = realloc(p_tArgs->p_fdesc, (dirSize+1)*sizeof(st_encFDesc_t));
+		}
+
+		/* Check result of malloc/realloc */
+		if (p_tArgs->p_fdesc == NULL) {
+			fprintf(stderr, "Error : Failed to allocate memory for file descriptor\n");
 			dirSize = -1;
 			break;
 		}
-		if (ffd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
-			continue
-		if (__extIsSupported(ffd.cFileName) <= 0)
-			continue;
-		if (dirOff > 0) {
-			dirOff--;
-			continue;
-		}
 		/* We've found a file, duplicate memory*/
-		threadArgs[dirSize].p_filename = strdup(ffd.cFileName);
+		p_tArgs->p_fdesc[dirSize].p_fname = strdup(ffd.cFileName);
+		p_tArgs->p_fdesc[dirSize].flocked = 0;
 		/* Move pointer to a next element in array of filenames */
 		/* Increment file amount of files */
 		dirSize++;
-	} while ((FindNextFile(hFind, &ffd) != 0) && ((dirSize < maxElems)))
+	}while (FindNextFile(hFind, &ffd) != 0);
 
+	if (dirSize == 0) {
+        free(p_tArgs->p_fdesc);
+    }
+    p_tArgs->files = dirSize;
 
     return (dirSize);
+}
+
+inline void os_mkPath(char* p_path, char* p_dirPath, char* p_fname, uint16_t lim)
+{
+    snprintf(p_path,lim,"%s/%s",p_dirPath,p_fname);
 }
 
 inline int32_t os_read32be(FILE* p_fp)
 {
     uint8_t data[4] = { 0, 0, 0, 0 };
-    _fread_nolock(data, 1, 4, p_fp);
+    fread_unlocked(data, 1, 4, p_fp);
 	int32_t const high = data[0];
 	int32_t const medh = data[1];
 	int32_t const medl = data[2];
@@ -189,7 +219,7 @@ inline int32_t os_read32be(FILE* p_fp)
 inline int32_t os_read32le(FILE* p_fp)
 {
     uint8_t data[4] = { 0, 0, 0, 0 };
-    _fread_nolock(data, 1, 4, p_fp);
+    fread_unlocked(data, 1, 4, p_fp);
 	int32_t const high = data[3];
 	int32_t const medh = data[2];
 	int32_t const medl = data[1];
@@ -200,29 +230,29 @@ inline int32_t os_read32le(FILE* p_fp)
 inline int16_t os_read16be(FILE* p_fp)
 {
     uint8_t data[2] = { 0, 0};
-    _fread_nolock(data, 1, 2, p_fp);
+    fread_unlocked(data, 1, 2, p_fp);
 	int32_t const high = data[0];
 	int32_t const low = data[1];
 	return (high << 8) | low;
 }
 
-inline int16_t os_read16le(FILE* p_enc)
+inline int16_t os_read16le(FILE* p_fp)
 {
     uint8_t data[2] = { 0, 0 };
-    _fread_nolock(data, 1, 2, p_fp);
+    fread_unlocked(data, 1, 2, p_fp);
     int32_t const high = data[1];
     int32_t const low = data[0];
     return (high << 8) | low;
 }
 
-inline void os_fread_unlocked(void* p_buf, size_t size, size_t cnt, FILE* p_fp)
+inline uint32_t os_fread_unlocked(void* p_buf, size_t size, size_t cnt, FILE* p_fp)
 {
-	_fread_nolock(p_buf, size, cnt, p_fp);
+	return (fread_unlocked(p_buf, size, cnt, p_fp));
 }
 
 inline void os_fwrite_unlocked(void* p_buf, size_t size, size_t cnt, FILE* p_fp)
 {
-	_fwrite_nolock(p_buf, size, cnt, p_fp);
+	fwrite_unlocked(p_buf, size, cnt, p_fp);
 }
 
 inline void os_fclose(st_encoder_t* p_enc)

@@ -41,9 +41,15 @@ def assign_opt():
           dest='use_colors', action='store_true',
           default=True,
           help='Enable colored build output')
+          
+    AddOption('--lamepath',
+          dest='lamepath', action='store',
+          nargs=1,
+          help='Specify path to mp3lame library')
 
 # Process users options and generate target description
-def proc_opt(__genv):
+def proc_opt():
+    global genv
 
     # Make output colorfull
     if genv.GetOption('use_colors'):
@@ -60,6 +66,8 @@ CacheDir('./build/cache')
 
 # Install and assign available options
 assign_opt()
-proc_opt(genv,)
+proc_opt()
 
-genv.SConscript('SConscript', variant_dir='./build/', duplicate=0, exports='genv')
+lp = genv.GetOption('lamepath')
+
+genv.SConscript('SConscript', variant_dir='./build/', duplicate=0, exports='genv lp')

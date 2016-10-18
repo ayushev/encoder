@@ -6,7 +6,7 @@ sources = []
 includes = []
 prj_path = './'
 
-Import('genv')
+Import('genv lp')
 
 # Function to find already included files in the source list
 def add_sources(srcs):
@@ -60,15 +60,14 @@ conf = {
     'LIBS'    : [ 'pthread',
                   'mp3lame'
     ],
-    'LIBPATH' : [ './'
-    ]
+    'LIBPATH' : [ lp ],
 }
 genv.MergeFlags(conf)
 
 if sys.platform == 'linux' or sys.platform == 'linux2':
     os_src = 'os/os_posix.c'
 	
-if sys.platform == 'win32':
+if sys.platform == 'win32' or sys.platform == 'cygwin':
 	os_src = 'os/os_win.c'
 
 srcs =  [ prj_path + '*.c', os_src ]
