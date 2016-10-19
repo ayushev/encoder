@@ -147,18 +147,18 @@ int8_t os_fOffset(FILE* p_fp, int32_t off)
     return (err);
 }
 
-int32_t os_fExplore(char* dirPath, st_encArgs_t* p_tArgs, uint16_t maxElems)
+int32_t os_fExplore(st_encArgs_t* p_tArgs, uint16_t maxElems)
 {
 
     assert(p_tArgs != NULL);
-    assert(dirPath != NULL);
+    assert(p_tArgs->p_trgPath != NULL);
 
     DIR*            dirDesc = NULL;
     struct dirent*  dirFile = NULL;
     int32_t         dirSize = 0;
 
     /* Scanning the in directory */
-    if ((dirDesc = opendir (dirPath)) == NULL) {
+    if ((dirDesc = opendir (p_tArgs->p_trgPath)) == NULL) {
         fprintf(stderr, "Error : Failed to open input directory.\n");
         dirSize = -1;
     } else {

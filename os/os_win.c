@@ -141,11 +141,11 @@ int8_t os_fOffset(FILE* p_fp, int32_t off)
     return (err);
 }
 
-int32_t os_fExplore(char* p_dirPath, st_encArgs_t* p_tArgs, uint16_t maxElems)
+int32_t os_fExplore(st_encArgs_t* p_tArgs, uint16_t maxElems)
 {
 
     assert(p_tArgs != NULL);
-    assert(p_dirPath != NULL);
+    assert(p_tArgs->p_trgPath != NULL);
 
     TCHAR 			p_dir[MAX_PATH];
     int32_t         dirSize = 0;
@@ -153,7 +153,7 @@ int32_t os_fExplore(char* p_dirPath, st_encArgs_t* p_tArgs, uint16_t maxElems)
 	HANDLE 			hFind = INVALID_HANDLE_VALUE;
 
     /* Scanning the in directory */
-	strncpy(p_dir, p_dirPath, MAX_PATH);
+	strncpy(p_dir, p_tArgs->p_trgPath, MAX_PATH);
 	strncat(p_dir, TEXT("\\*"), MAX_PATH);
 
 	// Find the first file in the directory.

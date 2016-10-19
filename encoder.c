@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <assert.h>
 #include <pthread.h>
+#include <getopt.h>
 #include "encoder.h"
 /* Exceptions for C header */
 #include "e4c.h"
@@ -23,15 +24,17 @@ typedef enum en_encoderFSM {
 
 int main(int argc, char* argv[])
 {
-    char*           trgPath = NULL;
     pthread_t       threads[MAX_THREADS] = {0};
     st_encArgs_t    tArgs = {.p_fdesc = NULL,
                              .files = 0,
-                             .p_dirPath = NULL};
+                             .p_trgPath = NULL,
+                             .threadID = 0};
     pthread_attr_t  attr;
     int             ret;
     int             i;
     uint8_t         activeThreads = 0;
+    /* Let a user to define maxThreads value*/
+    uint16_t        maxThreads = MAX_THREADS;
 
     pthread_attr_init(&attr);
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
@@ -39,29 +42,58 @@ int main(int argc, char* argv[])
     if (argc < 2)
     {
         fprintf(stderr, "Error: Specify a directory with input files\n"
-                "Usage: %s PATH", argv[0]);
+                "Usage: %s [-th] PATH \n"
+                "Options:\n"
+                "        -t  N  Specifies how much threads the application should use \n"
+                "        -h     This help\n", argv[0]);
         exit(-1);
     }
 
+    while (optind < argc)
+    {
+        if ((i = getopt(argc, argv, "ht:")) != -1) {
+            switch (i) {
+                case 'h':
+                    fprintf(stderr, "Sound encoder usage:\n"
+                                    "-t    Specifies how much threads the application should use \n"
+                                    "-h    This help\n", optopt);
+                    exit(0);
+                    break;
+                case 't':
+                    if (strtol(optarg, NULL, 5) > MAX_THREADS) {
+                        fprintf(stderr, "Threads limit is %lu, selecting maximum\n", MAX_THREADS);
+                    } else {
+                        maxThreads = strtol(optarg, NULL, 5);
+                    }
+                    break;
+                default:
+                    abort();
+            }
+        } else {
+            tArgs.p_trgPath = strdup(argv[optind]);
+            optind++;
+        }
+    }
+
     /* It's recommended to store the argument value*/
-    trgPath = strdup(argv[1]);
-    if (trgPath == NULL)
+
+    if (tArgs.p_trgPath == NULL)
     {
         fprintf(stderr, "Error: strdup failed \n");
         exit(-1);
     }
 
-    os_fExplore(trgPath, &tArgs, MAX_THREADS);
+    os_fExplore(&tArgs, maxThreads);
     if (tArgs.files < 0)
     {
         fprintf(stderr, "Error: No valid files were found\n");
     }
     else
     {
-        tArgs.p_dirPath = argv[1];
         /* Create several threads */
-        for (i = 0; i < MAX_THREADS && i < tArgs.files; i++)
+        for (i = 0; i < maxThreads && i < tArgs.files; i++)
         {
+            tArgs.threadID = i;
             ret = pthread_create(&threads[i], &attr, music_procFiles,
                     (void *) &tArgs);
             if (ret)
@@ -84,6 +116,8 @@ int main(int argc, char* argv[])
             }
         }
 
+        printf("Finished: %lu files processed\n",tArgs.files);
+
         /* Free allocated memory */
         for (i = 0; i < tArgs.files; i++)
         {
@@ -93,7 +127,7 @@ int main(int argc, char* argv[])
             }
         }
         free(tArgs.p_fdesc);
-        free(trgPath);
+        free(tArgs.p_trgPath);
     }
 
     pthread_attr_destroy(&attr);

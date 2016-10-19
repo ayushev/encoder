@@ -12,7 +12,7 @@
 #define INBUF_SIZE      BLOCK_SIZE
 #define OUTBUF_SIZE     BLOCK_SIZE
 #define MAX_FILEPATH    256
-#define MAX_THREADS     2
+#define MAX_THREADS     20
 
 typedef enum en_music
 {
@@ -30,7 +30,8 @@ typedef struct st_encArgs
 {
     st_encFDesc_t*  p_fdesc;
     int32_t         files;
-    char*           p_dirPath;
+    char*           p_trgPath;
+    uint16_t        threadID;
 }st_encArgs_t;
 
 typedef struct st_encoder

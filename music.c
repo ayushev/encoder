@@ -345,30 +345,26 @@ int8_t music_procFile(char* p_dirPath, char* p_fname)
             switch (encFSM)
             {
                 case en_mfsm_akkudata:
-
-                /* We read fixed portion of samples from file to
-                 * uin8_t buffer and try to  rearrange them in a channel
-                 * buffer of uint32_t so that LAME can
-                 * understand those files
-                 * Example:
-                 * 1) p_channels --> L[00:00:00:00]R[00:00:00:00]
-                 * 2) p_inBuf -->     [11:22:33:44:55:66:77:88]
-                 * 3) bytesPerSample = 4
-                 * 4) __swapBytes()
-                 * 5) p_channels --> L[44:33:22:11]R[88:77:66:55]
-                 * */
-                frameLen = os_fread_unlocked(p_inBuf, bytesPS, INBUF_SIZE/bytesPS, inFile.p_fp);
-
-                if (frameLen == 0)
                 {
-                    encFSM = en_mfsm_flush;
-                }
-                else
-                {
-                    encFSM = en_mfsm_encode;
-                }
-                break;
+                    /* We read fixed portion of samples from file to
+                     * uin8_t buffer and try to  rearrange them in a channel
+                     * buffer of uint32_t so that LAME can
+                     * understand those files
+                     * Example:
+                     * 1) p_channels --> L[00:00:00:00]R[00:00:00:00]
+                     * 2) p_inBuf -->     [11:22:33:44:55:66:77:88]
+                     * 3) bytesPerSample = 4
+                     * 4) __swapBytes()
+                     * 5) p_channels --> L[44:33:22:11]R[88:77:66:55]
+                     * */
+                    frameLen = os_fread_unlocked(p_inBuf, bytesPS, INBUF_SIZE/bytesPS, inFile.p_fp);
 
+                    if (frameLen == 0)
+                        encFSM = en_mfsm_flush;
+                    else
+                        encFSM = en_mfsm_encode;
+                    break;
+                }
                 case en_mfsm_encode:
                 {
                     __flopBytes(p_inBuf,bytesPS * frameLen ,
@@ -379,11 +375,11 @@ int8_t music_procFile(char* p_dirPath, char* p_fname)
 
                     if (numChannels == 2){
                         frameLen = lame_encode_buffer_int(p_lame, p_channels[0], p_channels[1], 
-														  numSamples, p_outBuf, OUTBUF_SIZE);
+                                                          numSamples, p_outBuf, OUTBUF_SIZE);
                     }
                     else {
                         frameLen = lame_encode_buffer_int(p_lame, p_channels[0], NULL,
-														  numSamples, p_outBuf, OUTBUF_SIZE);
+                                                          numSamples, p_outBuf, OUTBUF_SIZE);
                     }
                     if (frameLen < 0)
                     {
@@ -397,9 +393,11 @@ int8_t music_procFile(char* p_dirPath, char* p_fname)
                 break;
 
                 case en_mfsm_flush:
-                frameLen = lame_encode_flush(p_lame, p_outBuf, OUTBUF_SIZE);
-                os_fwrite_unlocked(p_outBuf, frameLen, 1, outFile.p_fp);
-                encFSM = en_mfsm_exit;
+                {
+                    frameLen = lame_encode_flush(p_lame, p_outBuf, OUTBUF_SIZE);
+                    os_fwrite_unlocked(p_outBuf, frameLen, 1, outFile.p_fp);
+                    encFSM = en_mfsm_exit;
+                }
                 break;
 
                 case en_mfsm_invalid:
@@ -440,8 +438,10 @@ void* music_procFiles(void *threadarg)
 {
     assert(threadarg != NULL);
 
-    st_encArgs_t* tArgs = (st_encArgs_t*) threadarg;
-    int32_t tArgsIndex = -1;
+    st_encArgs_t*   tArgs = (st_encArgs_t*) threadarg;
+    int32_t         tArgsIndex = -1;
+    uint16_t        procFiles = 0;
+    uint16_t        tID = tArgs->threadID;
 
     while (1)
     {
@@ -459,12 +459,14 @@ void* music_procFiles(void *threadarg)
         }
         pthread_mutex_unlock(&music_mutex);
 
-        if (tArgsIndex >= 0)
-            music_procFile(tArgs->p_dirPath, tArgs->p_fdesc[tArgsIndex].p_fname);
-        else
+        if (tArgsIndex >= 0) {
+            music_procFile(tArgs->p_trgPath, tArgs->p_fdesc[tArgsIndex].p_fname);
+            procFiles++;
+        }else
             break;
     }
 
+    printf("[%lu] Thread converted %lu files\n",tID, procFiles);
     pthread_exit(NULL);
 	return NULL;
 }

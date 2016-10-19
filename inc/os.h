@@ -14,7 +14,7 @@
 int8_t  os_fOpen(uint8_t inout, st_encoder_t * enc);
 /* Skip a given offset from a file read pointer */
 int8_t os_fOffset(FILE* p_fp, int32_t off);
-int32_t os_fExplore(char* dirPath, st_encArgs_t* tArgs, uint16_t maxElems);
+int32_t os_fExplore(st_encArgs_t* tArgs, uint16_t maxElems);
 
 extern void os_mkPath(char* p_path, char* p_dirPath, char* p_fname, uint16_t lim);
 
