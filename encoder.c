@@ -114,7 +114,7 @@ int main(int argc, char* argv[])
         exit(-1);
     }
 
-    os_fExplore(&tArgs, maxThreads);
+    os_fExplore(&tArgs);
     if (tArgs.files < 0)
     {
         fprintf(stderr, "Error: No valid files were found\n");
