@@ -1,8 +1,17 @@
 /*
- * os_posix.c
+ * --- Module Description --------------------------------------------------- *
+ */
+/**
+ * \file    os.c
+ * \author  Artem Yushev
+ * \date    $Date$
+ * \version $Version$
  *
- *  Created on: Oct 14, 2016
- *      Author: yushev
+ * \brief   POSIX implementation for os.h functions.
+ */
+
+/*
+ * --- Includes ------------------------------------------------------------- *
  */
 
 #include <stdlib.h>
@@ -21,9 +30,40 @@
 #include "os.h"
 #include "e4c.h"
 
+/*
+ * --- Macro Definitions ---------------------------------------------------- *
+ */
+
+/*
+ * --- Type Definitions ----------------------------------------------------- *
+ */
+/**
+ * \brief     Substitute filename extension from input to mp3
+ *            We already checked several times that data here is
+ *            actually a string, so we can't skip size...
+ * \param     to            Pointer to where store the result
+ * \param     from          Pointer from where get data
+ * \return
+ */
 static char * __extSubstitute(char* to, const char* from);
+
+/**
+ * \brief     Check whether we support input file by probing its extension
+ *            We already checked several times that data here is
+ *            actually a string, so we can't skip size...
+ * \param     from          Pointer from where get data
+ * \return    Negative on failure, otherwise OK
+ */
 static int8_t __extIsSupported(const char* from);
 
+/*
+ * --- Variables ------------------------------------------------------------ *
+ * /
+
+
+/*
+ * --- Local Functions Declaration ------------------------------------------ *
+ */
 static char * __extSubstitute(char* to, const char* from)
 {
     assert(to != NULL);
@@ -58,6 +98,10 @@ static int8_t __extIsSupported(const char* from)
     }
     return (ret);
 }
+
+/*
+ * --- Global Functions Definition ------------------------------------------ *
+ */
 
 int8_t os_fOpen(uint8_t read, st_encoder_t * p_enc)
 {
@@ -147,7 +191,7 @@ int8_t os_fOffset(FILE* p_fp, int32_t off)
     return (err);
 }
 
-int32_t os_fExplore(st_encArgs_t* p_tArgs, uint16_t maxElems)
+int32_t os_fExplore(st_encArg_t* p_tArgs)
 {
 
     assert(p_tArgs != NULL);

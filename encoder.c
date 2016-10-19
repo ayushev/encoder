@@ -56,7 +56,7 @@ typedef enum en_encoderFSM {
 int main(int argc, char* argv[])
 {
     pthread_t       threads[MAX_THREADS] = {0};
-    st_encArgs_t    tArgs = {.p_fdesc = NULL,
+    st_encArg_t    tArgs = {.p_fdesc = NULL,
                              .files = 0,
                              .p_trgPath = NULL,
                              .threadID = 0};

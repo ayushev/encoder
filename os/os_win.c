@@ -1,10 +1,18 @@
 /*
- * os_win.c
+ * --- Module Description --------------------------------------------------- *
+ */
+/**
+ * \file    os.c
+ * \author  Artem Yushev
+ * \date    $Date$
+ * \version $Version$
  *
- *  Created on: Oct 14, 2016
- *      Author: yushev
+ * \brief   WIN implementation for os.h functions.
  */
 
+/*
+ * --- Includes ------------------------------------------------------------- *
+ */
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -22,9 +30,41 @@
 #include "os.h"
 #include "e4c.h"
 
+
+/*
+ * --- Macro Definitions ---------------------------------------------------- *
+ */
+
+/*
+ * --- Type Definitions ----------------------------------------------------- *
+ */
+/**
+ * \brief     Substitute filename extension from input to mp3
+ *            We already checked several times that data here is
+ *            actually a string, so we can't skip size...
+ * \param     to            Pointer to where store the result
+ * \param     from          Pointer from where get data
+ * \return
+ */
 static char * __extSubstitute(char* to, const char* from);
+
+/**
+ * \brief     Check whether we support input file by probing its extension
+ *            We already checked several times that data here is
+ *            actually a string, so we can't skip size...
+ * \param     from          Pointer from where get data
+ * \return    Negative on failure, otherwise OK
+ */
 static int8_t __extIsSupported(const char* from);
 
+/*
+ * --- Variables ------------------------------------------------------------ *
+ * /
+
+
+/*
+ * --- Local Functions Declaration ------------------------------------------ *
+ */
 static char * __extSubstitute(char* to, const char* from)
 {
     assert(to != NULL);
@@ -59,6 +99,10 @@ static int8_t __extIsSupported(const char* from)
     return (ret);
 }
 
+
+/*
+ * --- Global Functions Definition ------------------------------------------ *
+ */
 int8_t os_fOpen(uint8_t read, st_encoder_t * p_enc)
 {
     assert(p_enc != NULL);
@@ -141,11 +185,11 @@ int8_t os_fOffset(FILE* p_fp, int32_t off)
     return (err);
 }
 
-int32_t os_fExplore(st_encArgs_t* p_tArgs, uint16_t maxElems)
+int32_t os_fExplore(st_encArg_t* p_encArg)
 {
 
-    assert(p_tArgs != NULL);
-    assert(p_tArgs->p_trgPath != NULL);
+    assert(p_encArg != NULL);
+    assert(p_encArg->p_trgPath != NULL);
 
     TCHAR 			p_dir[MAX_PATH];
     int32_t         dirSize = 0;
@@ -153,7 +197,7 @@ int32_t os_fExplore(st_encArgs_t* p_tArgs, uint16_t maxElems)
 	HANDLE 			hFind = INVALID_HANDLE_VALUE;
 
     /* Scanning the in directory */
-	strncpy(p_dir, p_tArgs->p_trgPath, MAX_PATH);
+	strncpy(p_dir, p_encArg->p_trgPath, MAX_PATH);
 	strncat(p_dir, TEXT("\\*"), MAX_PATH);
 
 	// Find the first file in the directory.
@@ -173,29 +217,29 @@ int32_t os_fExplore(st_encArgs_t* p_tArgs, uint16_t maxElems)
 
 		/* Allocate memory for file descriptor  */
 		if (dirSize == 0) {
-			p_tArgs->p_fdesc = malloc(sizeof(st_encFDesc_t));
+			p_encArg->p_fdesc = malloc(sizeof(st_encFDesc_t));
 		} else {
-			p_tArgs->p_fdesc = realloc(p_tArgs->p_fdesc, (dirSize+1)*sizeof(st_encFDesc_t));
+			p_encArg->p_fdesc = realloc(p_encArg->p_fdesc, (dirSize+1)*sizeof(st_encFDesc_t));
 		}
 
 		/* Check result of malloc/realloc */
-		if (p_tArgs->p_fdesc == NULL) {
+		if (p_encArg->p_fdesc == NULL) {
 			fprintf(stderr, "Error : Failed to allocate memory for file descriptor\n");
 			dirSize = -1;
 			break;
 		}
 		/* We've found a file, duplicate memory*/
-		p_tArgs->p_fdesc[dirSize].p_fname = strdup(ffd.cFileName);
-		p_tArgs->p_fdesc[dirSize].flocked = 0;
+		p_encArg->p_fdesc[dirSize].p_fname = strdup(ffd.cFileName);
+		p_encArg->p_fdesc[dirSize].flocked = 0;
 		/* Move pointer to a next element in array of filenames */
 		/* Increment file amount of files */
 		dirSize++;
 	}while (FindNextFile(hFind, &ffd) != 0);
 
 	if (dirSize == 0) {
-        free(p_tArgs->p_fdesc);
+        free(p_encArg->p_fdesc);
     }
-    p_tArgs->files = dirSize;
+    p_encArg->files = dirSize;
 
     return (dirSize);
 }

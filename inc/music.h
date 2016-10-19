@@ -1,8 +1,13 @@
 /*
- * music.h
+ * --- Module Description --------------------------------------------------- *
+ */
+/**
+ * \file    music.h
+ * \author  Artem Yushev
+ * \date    $Date$
+ * \version $Version$
  *
- *  Created on: Oct 16, 2016
- *      Author: yushev
+ * \brief   Functions to process and convert music files into mp3
  */
 
 #ifndef MUSIC_H_

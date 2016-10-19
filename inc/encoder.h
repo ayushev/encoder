@@ -46,7 +46,7 @@ typedef struct st_encArgs
     int32_t         files;
     char*           p_trgPath;
     uint16_t        threadID;
-}st_encArgs_t;
+}st_encArg_t;
 
 typedef struct st_encoder
 {

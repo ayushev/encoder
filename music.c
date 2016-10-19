@@ -506,7 +506,7 @@ void* music_procFiles(void* p_threadarg)
 {
     assert(p_threadarg != NULL);
 
-    st_encArgs_t*   p_tArg = (st_encArgs_t*) p_threadarg;
+    st_encArg_t*   p_tArg = (st_encArg_t*) p_threadarg;
     int32_t         tArgIndex = -1;
     uint16_t        procFiles = 0;
     uint16_t        tID = p_tArg->threadID;
