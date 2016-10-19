@@ -9,9 +9,8 @@ This command line application takes as an argument a directory with WAVE files a
 ## System requirements (Windows)
 * [Cygwin](https://www.cygwin.com/) toolset - [download](https://cygwin.com/install.html)
 * [Python 2.7](https://www.python.org) for SCons - [download](https://www.python.org/downloads/)
-* Select checkbox to add Python in 
 * [SCons](http://scons.org/) building tool - [download](http://prdownloads.sourceforge.net/scons/scons-2.5.0-setup.exe)
-* C:\Python27\Scripts;C:\Python27;;
+* [LAME](http://lame.sourceforge.net/) mp3 library. If you don't have those libraries preinstalled, you can built them from sources on your machine with Cygwin/MinGW/MSVC.
 
 ## Features
 * PCM 8/16/24/32 bps (bits per sample) 
@@ -21,7 +20,7 @@ This command line application takes as an argument a directory with WAVE files a
 ## Usage
 1. Download zip from github or clone the repository (you need to have a github application on your system for this)
 2. In console/terminal_emulator type: `cd <encoder_folder>`
-3. `scons`
+3. `scons` . [Windows only] If your static LAME library is in a place where scons can't find it, you may give to scons --lamepath=<path_to_library> option to point the proper place
 4. `./build/encoder[.exe] [-th] test/` Where `-t` option specifies how much threads you want to allow to use.
 
 ## Test folder
