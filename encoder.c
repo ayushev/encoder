@@ -1,3 +1,19 @@
+/*
+ * --- Module Description --------------------------------------------------- *
+ */
+/**
+ * \file    encoder.c
+ * \author  Artem Yushev
+ * \date    $Date$
+ * \version $Version$
+ *
+ * \brief   Main routines for threads scheduling and controlling
+ */
+
+/*
+ * --- Includes ------------------------------------------------------------- *
+ */
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -12,8 +28,14 @@
 #include "os.h"
 /* Music dependent functions */
 #include "music.h"
+/*
+ * --- Macro Definitions ---------------------------------------------------- *
+ */
 
 
+/*
+ * --- Type Definitions ----------------------------------------------------- *
+ */
 typedef enum en_encoderFSM {
     en_efsm_invalid,
     en_efsm_prepData,
@@ -21,6 +43,15 @@ typedef enum en_encoderFSM {
     en_efsm_waitThread,
     en_efsm_end
 } en_encoderFSM_t;
+
+/*
+ * --- Variables ------------------------------------------------------------ *
+ * /
+
+
+/*
+ * --- Local Functions Declaration ------------------------------------------ *
+ */
 
 int main(int argc, char* argv[])
 {
@@ -134,3 +165,7 @@ int main(int argc, char* argv[])
     pthread_exit(NULL);
 
 }
+
+/*
+ * --- Global Functions Definition ------------------------------------------ *
+ */

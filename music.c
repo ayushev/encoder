@@ -1,10 +1,19 @@
 /*
- * music.c
+ * --- Module Description --------------------------------------------------- *
+ */
+/**
+ * \file    music.c
+ * \author  Artem Yushev
+ * \date    $Date$
+ * \version $Version$
  *
- *  Created on: Oct 14, 2016
- *      Author: yushev
+ * \brief   Functions to process and convert music files into mp3
  */
 
+
+/*
+ * --- Includes ------------------------------------------------------------- *
+ */
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdint.h>
@@ -16,6 +25,9 @@
 #include "os.h"
 #include "e4c.h"
 
+/*
+ * --- Macro Definitions ---------------------------------------------------- *
+ */
 #define   MAX_UINT32                    0xFFFFFFFF
 #define   MUSIC_IN                      1
 #define   MUSIC_OUT                     0
@@ -33,6 +45,11 @@
 /* Contains the letters "DATA" in ASCII (0x64617461 big-endian form). */
 #define   WAVE_ID_DATA                  0x64617461
 
+
+/*
+ * --- Type Definitions ----------------------------------------------------- *
+ */
+
 typedef enum en_musicFSM
 {
     en_mfsm_invalid,
@@ -42,14 +59,61 @@ typedef enum en_musicFSM
     en_mfsm_exit
 } en_musicFSM_t;
 
+/*
+ * --- Variables ------------------------------------------------------------ *
+ */
 static pthread_mutex_t music_mutex = PTHREAD_MUTEX_INITIALIZER;
 
+/*
+ * --- Local Functions Declaration ------------------------------------------ *
+ */
+
+/**
+ * \brief     Prepare input WAVE file and process headers
+ *
+ * \param     p_lame        Pointer to currently used lame instance
+ * \param     p_enc         Pointer to file description
+ * \return    Negative for failure, otherwise OK
+ */
 static int8_t __wavePrepare(lame_t p_lame, st_encoder_t* p_enc);
+
+/**
+ * \brief     Prepare for further processing void input file. Detect format.
+ *
+ * \param     p_lame        Pointer to currently used lame instance
+ * \param     p_enc         Pointer to file description
+ * \return    Negative for failure, otherwise OK
+ */
 static int8_t __musicPrepare(lame_t p_lame, st_encoder_t* p_enc);
+
+/**
+ * \brief     Prepare encoder structure, open and prepare a given filename
+ *
+ * \param     inout         Point the direction (1 - Read, 0 - Write)
+ * \param     p_lame        Pointer to currently used lame instance
+ * \param     path          Absolute or relative path to file
+ * \return    Negative for failure, otherwise OK
+ */
 static int8_t __encPrepare(uint8_t inout, st_encoder_t * enc, const char* path);
+
+/**
+ * \brief     Read bytes from given IN buffer, flop them according
+ *            Bytes Sample value and store in two output structures
+ *
+ * \param     p_in          Pointer for IN data
+ * \param     inSize        IN data size
+ * \param     p_outL        Pointer where to store data for left speaker
+ * \param     p_outR        Pointer where to store data for right speaker
+ * \param     maxOut        Maximum output size
+ * \param     bps           Bytes per Sample value
+ * \return    Nothing
+ */
 static void __flopBytes(uint8_t* p_in, uint16_t inSize, int32_t* p_outL,
         int32_t* p_outR, uint16_t maxOut, uint8_t bps);
 
+/*
+ * --- Local Functions Definition ------------------------------------------- *
+ */
 static int8_t __encPrepare(uint8_t inout, st_encoder_t* p_enc, const char* path)
 {
     assert(p_enc != NULL);
@@ -101,102 +165,102 @@ static int8_t __wavePrepare(lame_t p_lame, st_encoder_t* p_enc)
     FILE*           p_fp = p_enc->p_fp;
 
     E4C_TRY{
-    /* ChunkSize */
-    chunkSize = os_read32le(p_fp);
-    /* Format */
-    i32 = os_read32be(p_fp);
-    if (i32 != WAVE_ID_WAVE)
-    {
-        E4C_THROW(RuntimeException, "Not a WAVE audio format");
-    }
-    chunkSize -= 4;
-    while (chunkSize > 0 && (dataLength == 0))
-    {
-        /* SubchunkID */
-        chunkID = os_read32be(p_fp);
-        /* SubchunkSize */
-        subChunkSize = os_read32le(p_fp);
-        chunkSize -= subChunkSize;
-        switch (chunkID)
+        /* ChunkSize */
+        chunkSize = os_read32le(p_fp);
+        /* Format */
+        i32 = os_read32be(p_fp);
+        if (i32 != WAVE_ID_WAVE)
         {
-            case WAVE_ID_FMT:
-            /* AudioFormat */
-            audioFmt = os_read16le(p_fp); subChunkSize -= 2;
-            /* NumChannels */
-            numChannels = os_read16le(p_fp); subChunkSize -= 2;
-            /* SampleRate */
-            sampleRate = os_read32le(p_fp); subChunkSize -= 4;
-            /* ByteRate */
-            os_read32le(p_fp); subChunkSize -= 4;
-            /* BlockAlign */
-            os_read16le(p_fp); subChunkSize -= 2;
-            /* BitPerSample */
-            bitsPerSample = os_read16le(p_fp);subChunkSize -= 2;
-
-            /* WAVE_FORMAT_EXTENSIBLE support */
-            if ((subChunkSize > 9) && (audioFmt == WAVE_FORMAT_EXTENSIBLE))
+            E4C_THROW(RuntimeException, "Not a WAVE audio format");
+        }
+        chunkSize -= 4;
+        while (chunkSize > 0 && (dataLength == 0))
+        {
+            /* SubchunkID */
+            chunkID = os_read32be(p_fp);
+            /* SubchunkSize */
+            subChunkSize = os_read32le(p_fp);
+            chunkSize -= subChunkSize;
+            switch (chunkID)
             {
-                /* cbSize */
-                os_read16le(p_fp); subChunkSize -= 2;
-                /* ValidBitsPerSample */
-                bitsPerSample = os_read16le(p_fp); subChunkSize -= 2;
-                /* dwChannelMask */
-                i32 = os_read32le(p_fp); subChunkSize -= 4;
-                /* SubFormat */
+                case WAVE_ID_FMT:
+                /* AudioFormat */
                 audioFmt = os_read16le(p_fp); subChunkSize -= 2;
-                p_enc->isFloat = audioFmt;
-            }
+                /* NumChannels */
+                numChannels = os_read16le(p_fp); subChunkSize -= 2;
+                /* SampleRate */
+                sampleRate = os_read32le(p_fp); subChunkSize -= 4;
+                /* ByteRate */
+                os_read32le(p_fp); subChunkSize -= 4;
+                /* BlockAlign */
+                os_read16le(p_fp); subChunkSize -= 2;
+                /* BitPerSample */
+                bitsPerSample = os_read16le(p_fp);subChunkSize -= 2;
 
-            if ((audioFmt != WAVE_FORMAT_PCM) &&
-                    ((audioFmt != WAVE_FORMAT_IEEE_FLOAT)))
-            {
-                E4C_THROW(RuntimeException, "Non PCM file format is't supported");
-            }
+                /* WAVE_FORMAT_EXTENSIBLE support */
+                if ((subChunkSize > 9) && (audioFmt == WAVE_FORMAT_EXTENSIBLE))
+                {
+                    /* cbSize */
+                    os_read16le(p_fp); subChunkSize -= 2;
+                    /* ValidBitsPerSample */
+                    bitsPerSample = os_read16le(p_fp); subChunkSize -= 2;
+                    /* dwChannelMask */
+                    i32 = os_read32le(p_fp); subChunkSize -= 4;
+                    /* SubFormat */
+                    audioFmt = os_read16le(p_fp); subChunkSize -= 2;
+                    p_enc->isFloat = audioFmt;
+                }
 
-            if (os_fOffset(p_fp, (long) subChunkSize) < 0)
-            {
-                E4C_THROW(RuntimeException, "Failed to skip data");
+                if ((audioFmt != WAVE_FORMAT_PCM) &&
+                        ((audioFmt != WAVE_FORMAT_IEEE_FLOAT)))
+                {
+                    E4C_THROW(RuntimeException, "Non PCM file format is't supported");
+                }
+
+                if (os_fOffset(p_fp, (long) subChunkSize) < 0)
+                {
+                    E4C_THROW(RuntimeException, "Failed to skip data");
+                }
+                break;
+                case WAVE_ID_DATA:
+                dataLength = subChunkSize;
+                break;
+                default:
+                if (os_fOffset(p_fp, (long) subChunkSize) < 0)
+                {
+                    E4C_THROW(RuntimeException, "Failed to skip data");
+                }
+                break;
             }
-            break;
-            case WAVE_ID_DATA:
-            dataLength = subChunkSize;
-            break;
-            default:
-            if (os_fOffset(p_fp, (long) subChunkSize) < 0)
+        }
+
+        if (dataLength)
+        {
+            if (lame_set_num_channels(p_lame, numChannels) < 0)
             {
-                E4C_THROW(RuntimeException, "Failed to skip data");
+                E4C_THROW(RuntimeException, "Failed to setup WAVE numChannels,"
+                        "LAME supports up to 2");
             }
-            break;
+            if (lame_set_in_samplerate(p_lame, sampleRate) < 0)
+            {
+                E4C_THROW(RuntimeException, "Failed to setup WAVE sampleRate");
+            }
+            /* DataLength == NumSamples * NumChannels * BitsPerSample/8 */
+            /* Make bytes from bits */
+            i32 = (bitsPerSample + 7) >> 3;
+            i32 *= numChannels;
+            /* Number of samples =  DataLength/(NumChannels * BytesPerSample) */
+            i32 = dataLength/i32;
+            lame_set_num_samples(p_lame, i32);
+            p_enc->bps = bitsPerSample;
         }
     }
-
-    if (dataLength)
+    E4C_CATCH(RuntimeException)
     {
-        if (lame_set_num_channels(p_lame, numChannels) < 0)
-        {
-            E4C_THROW(RuntimeException, "Failed to setup WAVE numChannels,"
-                    "LAME supports up to 2");
-        }
-        if (lame_set_in_samplerate(p_lame, sampleRate) < 0)
-        {
-            E4C_THROW(RuntimeException, "Failed to setup WAVE sampleRate");
-        }
-        /* DataLength == NumSamples * NumChannels * BitsPerSample/8 */
-        /* Make bytes from bits */
-        i32 = (bitsPerSample + 7) >> 3;
-        i32 *= numChannels;
-        /* Number of samples =  DataLength/(NumChannels * BytesPerSample) */
-        i32 = dataLength/i32;
-        lame_set_num_samples(p_lame, i32);
-        p_enc->bps = bitsPerSample;
+        const e4c_exception * e = e4c_get_exception();
+        fprintf(stderr, "Error: %s (%s).", e->name, e->message);
+        err = -1;
     }
-}
-E4C_CATCH(RuntimeException)
-{
-    const e4c_exception * e = e4c_get_exception();
-    fprintf(stderr, "Error: %s (%s).", e->name, e->message);
-    err = -1;
-}
 
     return (err);
 }
@@ -254,6 +318,10 @@ static void __flopBytes(uint8_t* p_in, uint16_t inSize, int32_t* p_outL,
         break;
     }
 }
+
+/*
+ * --- Global Functions Definition ------------------------------------------ *
+ */
 
 int8_t music_procFile(char* p_dirPath, char* p_fname)
 {
@@ -434,33 +502,33 @@ int8_t music_procFile(char* p_dirPath, char* p_fname)
     return (ret);
 }
 
-void* music_procFiles(void *threadarg)
+void* music_procFiles(void* p_threadarg)
 {
-    assert(threadarg != NULL);
+    assert(p_threadarg != NULL);
 
-    st_encArgs_t*   tArgs = (st_encArgs_t*) threadarg;
-    int32_t         tArgsIndex = -1;
+    st_encArgs_t*   p_tArg = (st_encArgs_t*) p_threadarg;
+    int32_t         tArgIndex = -1;
     uint16_t        procFiles = 0;
-    uint16_t        tID = tArgs->threadID;
+    uint16_t        tID = p_tArg->threadID;
 
     while (1)
     {
-        tArgsIndex = -1;
+        tArgIndex = -1;
 
         pthread_mutex_lock(&music_mutex);
-        for (int i = 0; i < tArgs->files; i++)
+        for (int i = 0; i < p_tArg->files; i++)
         {
-            if (tArgs->p_fdesc[i].flocked == 0)
+            if (p_tArg->p_fdesc[i].flocked == 0)
             {
-                tArgs->p_fdesc[i].flocked = 1;
-                tArgsIndex = i;
+                p_tArg->p_fdesc[i].flocked = 1;
+                tArgIndex = i;
                 break;
             }
         }
         pthread_mutex_unlock(&music_mutex);
 
-        if (tArgsIndex >= 0) {
-            music_procFile(tArgs->p_trgPath, tArgs->p_fdesc[tArgsIndex].p_fname);
+        if (tArgIndex >= 0) {
+            music_procFile(p_tArg->p_trgPath, p_tArg->p_fdesc[tArgIndex].p_fname);
             procFiles++;
         }else
             break;

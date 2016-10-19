@@ -202,7 +202,7 @@ int32_t os_fExplore(st_encArgs_t* p_tArgs, uint16_t maxElems)
 
 inline void os_mkPath(char* p_path, char* p_dirPath, char* p_fname, uint16_t lim)
 {
-    snprintf(p_path,lim,"%s/%s",p_dirPath,p_fname);
+    snprintf(p_path,lim,"%s\\%s",p_dirPath,p_fname);
 }
 
 inline int32_t os_read32be(FILE* p_fp)
