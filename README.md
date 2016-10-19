@@ -7,9 +7,7 @@ This command line application takes as an argument a directory with WAVE files a
 * [SCons](http://scons.org/) building tool (e.g. Debian sudo apt-get install scons)
 
 ## System requirements (Windows)
-* [MinGW](http://www.mingw.org/) toolset - [download](https://sourceforge.net/projects/mingw/files/latest/download?source=files)
-** Packages mingw-developer-toolkit and mingw32-base should be seletced and installed as well 
-** Add "<path_to_MinGW>\bin" path to environment variable PATH (e.g. "C:\MinGW\bin;")
+* [Cygwin](https://www.cygwin.com/) toolset - [download](https://cygwin.com/install.html)
 * [Python 2.7](https://www.python.org) for SCons - [download](https://www.python.org/downloads/)
 * Select checkbox to add Python in 
 * [SCons](http://scons.org/) building tool - [download](http://prdownloads.sourceforge.net/scons/scons-2.5.0-setup.exe)
@@ -18,7 +16,16 @@ This command line application takes as an argument a directory with WAVE files a
 ## Features
 * PCM 8/16/24/32 bps (bits per sample) 
 * MP3 with VBR (variable bitrate)
-* Parallel files preocessing via POSIX threads
+* Parallel files processing via POSIX threads
 
 ## Usage
 1. Download zip from github or clone the repository (you need to have a github application on your system for this)
+2. In console/terminal_emulator type: `cd <encoder_folder>`
+3. `scons`
+4. `./build/encoder[.exe] [-th] test/` Where `-t` option specifies how much threads you want to allow to use.
+
+## Test folder
+In test folder you can find files in the folowing format XXYYa.wav, where
+* `XX` - Bits Per Sample in PCM, can be 08/16/24/32
+* `YY` - Bitrate, can be 8000 Hz/11500 Hz/ 22050 Hz/ 44100 Hz
+* `a`  - Mono/Stereo
